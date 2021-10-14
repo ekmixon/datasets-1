@@ -298,7 +298,7 @@ class TensorflowDatasetMixIn:
         if drop_remainder is None:
             # We assume that if you're shuffling it's the train set, so we drop the remainder unless told not to
             drop_remainder = shuffle
-        dataset = self.with_format("numpy", columns=[col for col in cols_to_retain if col in self.features])
+        dataset = self.with_format("python", columns=[col for col in cols_to_retain if col in self.features])
 
         def numpy_pad(data):
             try:
