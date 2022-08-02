@@ -158,9 +158,9 @@ class Counter(datasets.GeneratorBasedBuilder):
                 example["source"] = source
 
             if file.stem == "0032":
-                derived_file = base_path / (file.stem + "P" + file.suffix)
+                derived_file = base_path / f"{file.stem}P{file.suffix}"
             else:
-                derived_file = base_path / (file.stem + "p" + file.suffix)
+                derived_file = base_path / f"{file.stem}p{file.suffix}"
             with derived_file.open(encoding="utf-8") as f:
                 derived = parse_file(f)
                 example["derived"] = derived

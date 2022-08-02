@@ -98,7 +98,4 @@ class MBPP(datasets.GeneratorBasedBuilder):
                 data = [json.loads(line) for line in file]
             else:
                 data = json.load(file)
-            id_ = 0
-            for sample in data:
-                yield id_, sample
-                id_ += 1
+            yield from enumerate(data)

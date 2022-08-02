@@ -727,7 +727,7 @@ class CommonVoice(datasets.GeneratorBasedBuilder):
                 if len(field_values) < len(data_fields):
                     field_values += (len(data_fields) - len(field_values)) * ["''"]
 
-                result = {key: value for key, value in zip(data_fields, field_values)}
+                result = dict(zip(data_fields, field_values))
 
                 # set audio feature
                 result["audio"] = field_values[path_idx]

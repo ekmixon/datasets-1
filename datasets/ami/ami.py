@@ -268,7 +268,7 @@ class AMIConfig(datasets.BuilderConfig):
           missing_files: `List[string]`, a list of missing audio file ids
           **kwargs: keyword arguments forwarded to super.
         """
-        self.dl_path_formats = [_DL_SAMPLE_FORMAT + "." + f + ".wav" for f in formats]
+        self.dl_path_formats = [f"{_DL_SAMPLE_FORMAT}.{f}.wav" for f in formats]
 
         # for microphone configs some audio files are missing
         self.missing_files = missing_files if missing_files is not None else []
@@ -317,32 +317,40 @@ class AMI(datasets.GeneratorBasedBuilder):
         }
 
         if self.config.name == "headset-single":
-            features_dict.update({"file": datasets.Value("string")})
-            features_dict.update({"audio": datasets.features.Audio(sampling_rate=16_000)})
+            features_dict["file"] = datasets.Value("string")
+            features_dict["audio"] = datasets.features.Audio(sampling_rate=16_000)
             config_description = (
                 "Close talking audio of single headset. "
                 "This configuration only includes audio belonging to the "
                 "headset of the person currently speaking."
             )
         elif self.config.name == "microphone-single":
-            features_dict.update({"file": datasets.Value("string")})
-            features_dict.update({"audio": datasets.features.Audio(sampling_rate=16_000)})
+            features_dict["file"] = datasets.Value("string")
+            features_dict["audio"] = datasets.features.Audio(sampling_rate=16_000)
             config_description = (
                 "Far field audio of single microphone. "
                 "This configuration only includes audio belonging the first microphone, "
                 "*i.e.* 1-1, of the microphone array."
             )
         elif self.config.name == "headset-multi":
-            features_dict.update({f"file-{i}": datasets.Value("string") for i in range(4)})
-            features_dict.update({f"file-{i}": datasets.features.Audio(sampling_rate=16_000) for i in range(4)})
+            features_dict |= {f"file-{i}": datasets.Value("string") for i in range(4)}
+            features_dict |= {
+                f"file-{i}": datasets.features.Audio(sampling_rate=16_000)
+                for i in range(4)
+            }
+
             config_description = (
                 "Close talking audio of four individual headset. "
                 "This configuration includes audio belonging to four individual headsets."
                 " For each annotation there are 4 audio files 0, 1, 2, 3."
             )
         elif self.config.name == "microphone-multi":
-            features_dict.update({f"file-1-{i}": datasets.Value("string") for i in range(1, 8)})
-            features_dict.update({f"file-1-{i}": datasets.features.Audio(sampling_rate=16_000) for i in range(1, 8)})
+            features_dict |= {f"file-1-{i}": datasets.Value("string") for i in range(1, 8)}
+            features_dict |= {
+                f"file-1-{i}": datasets.features.Audio(sampling_rate=16_000)
+                for i in range(1, 8)
+            }
+
             config_description = (
                 "Far field audio of microphone array. "
                 "This configuration includes audio of "
@@ -424,8 +432,7 @@ class AMI(datasets.GeneratorBasedBuilder):
     def _sort(key, lists):
         indices = np.argsort(key)
 
-        sorted_lists = [np.array(array)[indices].tolist() for array in lists]
-        return sorted_lists
+        return [np.array(array)[indices].tolist() for array in lists]
 
     @staticmethod
     def _extract_words_annotations(paths):
@@ -512,24 +519,31 @@ class AMI(datasets.GeneratorBasedBuilder):
 
         # words
         words_paths = {
-            _id: [os.path.join(annotation_path, "words/{}.{}.words.xml".format(_id, speaker)) for speaker in _SPEAKERS]
+            _id: [
+                os.path.join(annotation_path, f"words/{_id}.{speaker}.words.xml")
+                for speaker in _SPEAKERS
+            ]
             for _id in ids
         }
+
         words_paths = {_id: list(filter(lambda path: os.path.isfile(path), words_paths[_id])) for _id in ids}
         words_paths = {key: words_paths[key] for key in words_paths if len(words_paths[key]) > 0}
 
         # segments
         segments_paths = {
             _id: [
-                os.path.join(annotation_path, "segments/{}.{}.segments.xml".format(_id, speaker))
+                os.path.join(
+                    annotation_path, f"segments/{_id}.{speaker}.segments.xml"
+                )
                 for speaker in _SPEAKERS
             ]
             for _id in ids
         }
+
         segments_paths = {_id: list(filter(lambda path: os.path.isfile(path), segments_paths[_id])) for _id in ids}
         segments_paths = {key: segments_paths[key] for key in segments_paths if len(segments_paths[key]) > 0}
 
-        for _id in words_paths.keys():
+        for _id in words_paths:
             word_ids, word_start_times, word_end_times, words, word_speakers = self._extract_words_annotations(
                 words_paths[_id]
             )
@@ -556,13 +570,25 @@ class AMI(datasets.GeneratorBasedBuilder):
             }
 
             if self.config.name in ["headset-single", "microphone-single"]:
-                result.update({"file": samples_paths_dict[_id][0], "audio": samples_paths_dict[_id][0]})
+                result |= {
+                    "file": samples_paths_dict[_id][0],
+                    "audio": samples_paths_dict[_id][0],
+                }
+
             elif self.config.name in ["headset-multi"]:
-                result.update({f"file-{i}": samples_paths_dict[_id][i] for i in range(num_audios)})
-                result.update({f"audio-{i}": samples_paths_dict[_id][i] for i in range(num_audios)})
+                result |= {f"file-{i}": samples_paths_dict[_id][i] for i in range(num_audios)}
+                result |= {f"audio-{i}": samples_paths_dict[_id][i] for i in range(num_audios)}
             elif self.config.name in ["microphone-multi"]:
-                result.update({f"file-1-{i+1}": samples_paths_dict[_id][i] for i in range(num_audios)})
-                result.update({f"audio-1-{i+1}": samples_paths_dict[_id][i] for i in range(num_audios)})
+                result |= {
+                    f"file-1-{i+1}": samples_paths_dict[_id][i]
+                    for i in range(num_audios)
+                }
+
+                result |= {
+                    f"audio-1-{i+1}": samples_paths_dict[_id][i]
+                    for i in range(num_audios)
+                }
+
             else:
                 raise ValueError(f"Configuration {self.config.name} does not exist.")
 
